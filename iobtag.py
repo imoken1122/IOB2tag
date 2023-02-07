@@ -6,6 +6,7 @@ phrases = ["Rc","1/8",'100','方法/ねじ込み']
 label = ['菅種類','呼び系','主体','補足']
 
 import re
+import MeCab
 def phrase_split(text,phrases,):
     token = []
     start = 0
