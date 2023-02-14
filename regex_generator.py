@@ -1,3 +1,7 @@
+import MeCab
+import numpy as np
+# MeCabのインスタンスを作成
+m = MeCab.Tagger()
 class Regex_Generator():
     def __init__(self,attrValue, tokens,attrValue_pattern):
         self.attrValue = attrValue
@@ -16,7 +20,7 @@ class Regex_Generator():
     def get_prefix_and_suffix(self,toknes,idx,pattern):
         prefix,suffix ='','' 
         if idx !=0:
-            prefix = re.escape(result[idx-1])
+            prefix = re.escape(self.tokens[idx-1])
             if not self.is_contained_attrValuepattern(prefix):
                 if not re.search('\\d', prefix[-1]) is None:
                     prefix = '\d'
@@ -27,8 +31,8 @@ class Regex_Generator():
         else:
             prefix = '^'
 
-        if idx != len(result)-1:
-            suffix = re.escape(result[idx+1])
+        if idx != len(self.tokens)-1:
+            suffix = re.escape(self.tokens[idx+1])
 
             if not self.is_contained_attrValuepattern(suffix):
                 if not re.search('\\d', suffix[0]) is None:
@@ -61,8 +65,8 @@ class Regex_Generator():
 
         idx  =self.tokens[self.pre_idx:] .index(query)+ self.pre_idx
 
-        prefix,suffix = get_prefix_and_suffix(self.tokens,idx,self.pattern)
-        cap_reg = get_capture_regex(self.tokens[idx])
+        prefix,suffix = self.get_prefix_and_suffix(self.tokens,idx,self.pattern)
+        cap_reg = self.get_capture_regex(self.tokens[idx])
         gen_regex= prefix + cap_reg + suffix
         self.save_ever_regex(idx)
 
@@ -139,7 +143,4 @@ for q in query:
         print(output,'\t',re.findall(output,S)[0])
     except:
         print(output)
-
-    
-        
 
