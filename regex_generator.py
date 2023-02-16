@@ -1,14 +1,12 @@
 import MeCab
 import re
-from typing import Dict, List, Tuple
-
 # MeCabのインスタンスを作成
 m = MeCab.Tagger()
 
 
 
 class Regex_Generator():
-    def __init__(self,attrValue: str,phrases: List[str],attrValue_pattern: str) -> None:
+    def __init__(self,attrValue,phrases,attrValue_pattern):
         self.attrValue = attrValue
 
         self.pattern = attrValue_pattern
@@ -18,29 +16,40 @@ class Regex_Generator():
         self.meta_str = ['\\',' ']
         self.pretokens =  self.phrase_split(attrValue,phrases)
         self.tokens  =  self.subtoken_split(self.pretokens,phrases)
-    def is_contained_attrValuepattern(self, text: str) -> bool:
+
+
+        
+    def is_contained_attrValuepattern(self,text):
         if not re.search(text, self.pattern) is None:
             return True
         else:
             return False
-    def get_prefix_and_suffix(self,tokens:List[str],idx:int)->Tuple[str,str]:
+        
+    def get_metastring_or_token(self,token):
+        return re.escape(token) if  re.search("(\s|\n)" ,token) == None else token.replace(' ','\s')
+    
+    
+    def get_prefix_and_suffix(self,idx):
         prefix,suffix ='','' 
         if idx !=0:
-            prefix = ''
+         
+            prefix = self.get_metastring_or_token(self.tokens[idx-1])
             if not self.is_contained_attrValuepattern(prefix):
                 if not re.search('\\d', prefix[-1]) is None:
                     prefix = '\d'
                 elif not re.search('(\n|\s)',prefix[-1]) is None:
                     prefix = '\s'
-                elif tokens[idx-2] == '\\':
-                    prefix = ''.join(tokens[idx-2:idx])
+                elif self.tokens[idx-2] == '\\':
+                    prefix = ''.join(self.tokens[idx-2:idx])
                 else:
-                    prefix = re.escape(tokens[idx-1]) if tokens[idx-1] not in self.meta_str else tokens[idx-1]
+                    #prefix = '[\\p{Script=Han}]\\p{Script=Katakana}\\p{Script=Hiragana}A-Za-zー]'
+                    prefix = '.+?'
+
         else:
             prefix = '^'
 
-        if idx != len(tokens)-1:
-            suffix =  ''
+        if idx != len(self.tokens)-1:
+            suffix = self.get_metastring_or_token(self.tokens[idx+1])
             if not self.is_contained_attrValuepattern(suffix):
                 if not re.search('\\d', suffix[0]) is None:
                     suffix = '\d'
@@ -48,24 +57,26 @@ class Regex_Generator():
                     suffix = '\s'
                 elif  suffix[0] == '\\':
 
-                    suffix = ''.join(tokens[idx+1:idx+4])
+                    suffix = ''.join(self.tokens[idx+1:idx+4])
                 else:
-                    suffix = re.escape(tokens[idx+1]) if tokens[idx+1] not in self.meta_str else tokens[idx+1]
+                    #suffix = '[\\p{Script=Han}]\\p{Script=Katakana}\\p{Script=Hiragana}A-Za-zー]'
+                    suffix = '.+?'
+
         else:
             suffix = '$'
 
         return prefix,suffix
-    def get_capture_regex(self,token: str) -> str:
+    def get_capture_regex(self,token):
         if re.search('^\d(?:[\./]?\d+)?$',token):
             return '(\d(?:[\./]?\d+)?)'
         else:
             return '(.+?)'
-    def is_existed_regex(self,gen_regex: str) -> bool:
+    def is_existed_regex(self,gen_regex):
         if gen_regex in self.query_regex:
             return True
         else:
             return False
-    def is_correct_extract_element(self, query: str, gen_regex: str) -> bool:
+    def is_correct_extract_element(self,query ,gen_regex):
 
             extract_element = re.findall(gen_regex,self.attrValue)[0]
             if extract_element == query:
@@ -73,11 +84,11 @@ class Regex_Generator():
             else:
                 return False
             
-    def generate_regex(self, query: str) -> str:
+    def generate_regex(self, query):
 
         idx  =self.tokens[self.pre_idx:].index(query)+ self.pre_idx
 
-        prefix,suffix = self.get_prefix_and_suffix(self.tokens,idx)
+        prefix,suffix = self.get_prefix_and_suffix(idx)
 
         cap_reg = self.get_capture_regex(self.tokens[idx])
         gen_regex= prefix + cap_reg + suffix
@@ -91,20 +102,21 @@ class Regex_Generator():
         self.pre_idx = idx
         return gen_regex
 
-    def save_ever_regex(self, idx: int) -> None:
+    def save_ever_regex(self,idx):
         
         for i in range(self.pre_idx,idx):
             token = self.tokens[i]
             
-            if self.is_contained_attrValuepattern(token.replace(' ','\s')):
-                self.ever_regex += re.escape(token) if  re.search("(\s|\n)" ,token) == None else token.replace(' ','\s')
+            token =self.get_metastring_or_token(token)
+            if self.is_contained_attrValuepattern(token):
+                self.ever_regex += token
                 
             else:
                 self.ever_regex += '.+?'
 
 ## preprocess functions below
 
-    def phrase_split(self, text: str, phrases: List[str]) -> List[str]:
+    def phrase_split(self,text,phrases,):
         token = []
         start = 0
         for i,phrase in enumerate(phrases):
@@ -118,14 +130,14 @@ class Regex_Generator():
         return token
 
 
-    def tokenizer(self,text:str) -> list:
+    def tokenizer(self,text):
         result = m.parse(text)
         # 分かち書き結果を分割
         tokens = result.split('\n')[:-2]
         tokens = [token.split('\t')[0] for token in tokens]
         return tokens
 
-    def separate_meta_string(self,string: str) -> Tuple[str, str]:
+    def separate_meta_string(self,string):
         result = []
         temp = ""
         for c in string:
@@ -142,7 +154,7 @@ class Regex_Generator():
         return result
 
 
-    def subtoken_split(self,token: str,phrases: List[str]) -> List[str]:
+    def subtoken_split(self,token,phrases):
         result = []
 
         for i in range(len(token)):
@@ -159,11 +171,21 @@ class Regex_Generator():
             result += subtoken
         return result
 
+S = 'サイズ/Rc1/8、100cm、(方法/ねじ込み)空気、別尺ー・：100mm'
+query = ["Rc","1/8",'100','方法/ねじ込み','空気','100']
+pattern = 'サイズ/[A-Z]+\d/\d、\d+cm、\([\p{Han}\p{Katakana}\p{Hiragana}ー]+/[\p{Han}\p{Katakana}\p{Hiragana}ー]+\)[\p{Han}\p{Katakana}\p{Hiragana}ー]+、[\p{Han}\p{Katakana}\p{Hiragana}ー]+・：\d+mm'
+
+S = '1×10×234×111×456×999'
+query = ['1','10','234','111','456','999']
+pattern = '\d+×\d+×\d+×\d+×\d+×\d+'
+
 
 S = '【ねじ込み】238 、56(折りたたみ)、98(常時)\n2348 (非常時 )mm'
 query = ['ねじ込み','238','56','折りたたみ','98','常時','2348','非常時']
 pattern = '【[\p{Han}+]】\d+\s、\d+\([\p{Han}+]\)、\d+\([\p{Han}+]\)\n\d+\s\(\p{Han}+\s\)mm'
 
+
+save_regex = []
 rg = Regex_Generator(S,query, pattern)
 for q in query:
     gen_regex = rg.generate_regex(q)
@@ -171,6 +193,6 @@ for q in query:
 #    result[result.index(q)] = ''
 
     try:
-        print(r'{0}'.format(output),'\t',re.findall(output,S)[0])
+        print('{0}'.format(output),'\t',re.findall(output,S)[0])
     except:
         print(output)
