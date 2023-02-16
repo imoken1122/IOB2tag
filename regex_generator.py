@@ -1,4 +1,5 @@
 import MeCab
+import numpy as np
 import re
 # MeCabのインスタンスを作成
 m = MeCab.Tagger()
@@ -13,12 +14,9 @@ class Regex_Generator():
         self.ever_regex = '^'
         self.query_regex = []
         self.pre_idx = 0
-        self.meta_str = ['\\',' ']
+
         self.pretokens =  self.phrase_split(attrValue,phrases)
         self.tokens  =  self.subtoken_split(self.pretokens,phrases)
-
-
-        
     def is_contained_attrValuepattern(self,text):
         if not re.search(text, self.pattern) is None:
             return True
@@ -29,7 +27,7 @@ class Regex_Generator():
         return re.escape(token) if  re.search("(\s|\n)" ,token) == None else token.replace(' ','\s')
     
     
-    def get_prefix_and_suffix(self,idx):
+    def get_prefix_and_suffix(self,toknes,idx,pattern):
         prefix,suffix ='','' 
         if idx !=0:
          
@@ -37,8 +35,7 @@ class Regex_Generator():
             if not self.is_contained_attrValuepattern(prefix):
                 if not re.search('\\d', prefix[-1]) is None:
                     prefix = '\d'
-                elif not re.search('(\n|\s)',prefix[-1]) is None:
-                    prefix = '\s'
+
                 elif self.tokens[idx-2] == '\\':
                     prefix = ''.join(self.tokens[idx-2:idx])
                 else:
@@ -53,8 +50,7 @@ class Regex_Generator():
             if not self.is_contained_attrValuepattern(suffix):
                 if not re.search('\\d', suffix[0]) is None:
                     suffix = '\d'
-                elif not re.search('\s',suffix[0]) is None:
-                    suffix = '\s'
+
                 elif  suffix[0] == '\\':
 
                     suffix = ''.join(self.tokens[idx+1:idx+4])
@@ -88,7 +84,7 @@ class Regex_Generator():
 
         idx  =self.tokens[self.pre_idx:].index(query)+ self.pre_idx
 
-        prefix,suffix = self.get_prefix_and_suffix(idx)
+        prefix,suffix = self.get_prefix_and_suffix(self.tokens,idx,self.pattern)
 
         cap_reg = self.get_capture_regex(self.tokens[idx])
         gen_regex= prefix + cap_reg + suffix
@@ -158,7 +154,7 @@ class Regex_Generator():
         result = []
 
         for i in range(len(token)):
-            if token[i] not in phrases: 
+            if token[i] not in query: 
                 if re.search("(\s|\n)",token[i]) != None:
                     
                     subtoken = sum([ self.tokenizer(t) if t not in [" ",'\n'] else [t] for t in self.separate_meta_string(token[i])],[])
@@ -193,6 +189,6 @@ for q in query:
 #    result[result.index(q)] = ''
 
     try:
-        print('{0}'.format(output),'\t',re.findall(output,S)[0])
+        print(r'{0}'.format(output),'\t',re.findall(output,S)[0])
     except:
         print(output)
