@@ -234,21 +234,3 @@ class RegexGenerator():
         return gen_regex
 
 
-
-for d in data:
-    flag = False
-    result = []
-    tmp = d.query(条件):
-    if flag and len(tmp)>0:
-       result = 処理 
-       flag = True
-    tmp = d.query(条件):
-    if flag and len(tmp)>0:
-       result = 処理 
-       flag = True
-    tmp = d.query(条件):
-    if flag and len(tmp)>0:
-       result = 処理 
-       flag = True
-    result = function(result)
-    
