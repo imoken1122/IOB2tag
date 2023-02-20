@@ -2,6 +2,15 @@ import pytest
 import regex_generator as rg
 
 
+def testcase_easy():
+    S = '踏み台:M122'
+    pattern = '^.+?:M\d+$'
+    querys = ['踏み台','M122']
+    obj = rg.RegexGenerator(S,querys,pattern)
+    obj.excute()
+    extracted_elements =  obj.extracted_elements
+
+    assert extracted_elements == querys 
 def testcase_standard():
     S = 'サイズ/Rc1/8、100cm、(方法/ねじ込み)空気、別尺ー・：100mm'
     pattern = 'サイズ/[A-Z]+\d/\d、\d+cm、\([\p{Han}\p{Katakana}\p{Hiragana}ー]+/[\p{Han}\p{Katakana}\p{Hiragana}ー]+\)[\p{Han}\p{Katakana}\p{Hiragana}ー]+、[\p{Han}\p{Katakana}\p{Hiragana}ー]+・：\d+mm'
@@ -41,13 +50,12 @@ def testcase_contain_many_space():
     obj = rg.RegexGenerator(S,querys,pattern)
     obj.excute()
     extracted_elements =  obj.extracted_elements
-    print(obj.query_regex)
     assert extracted_elements == querys
 
 def testcase_complex1():
-    S = '呼び径:50A,長さ:10m,最高温度:200℃\n適用圧力:1.0MPa,材質:SUS304'
+    S = '呼び径50A長さ10m,最高温度:200℃\n適用圧力:1.0MPa,材質:SUS304'
     querys = ['50A', '10', '200', '1.0', 'SUS304']
-    pattern = '呼び径:\d+[A-Z],長さ:\d+m,最高温度:\d+℃\n適用圧力:\d+\.\d+MPa,材質:[A-Z]+'
+    pattern = '.+?\d+[A-Z]長さ\d+m,最高温度:\d+℃\n適用圧力:\d+\.\d+MPa,材質:[A-Z]+'
     obj = rg.RegexGenerator(S,querys,pattern)
     obj.excute()
     extracted_elements =  obj.extracted_elements
@@ -74,7 +82,21 @@ def testcase_complex3():
     extracted_elements =  obj.extracted_elements
     assert extracted_elements == querys
 
+def testcase_complex4():
+    S = '●仕様：自在ストッパー付●サイズ：キャスター：Φ100×24.5(幅)mm取付高：125mmネジ径：9mm●重量：約550g(1個)●耐荷重：静止時：400kg走行移動時：80kg●材質：金具：スチール(亜鉛メッキ) 車輪：ゴム●使用温度範囲：-40～80℃●入数：2個●ねじサイズ：3/8” 16山'
+    querys = ['自在','付','100','24.5','静止時','400','走行移動時','80','3/8','16']
+    pattern = '^●仕様：(自在|固定)ストッパー.+?●サイズ：キャスター：Φ\\d+(\\.\\d+)?×\\d+(\\.\\d+)?\\.\\d+(\\.\\d+)?\\(幅\\)mm取付高：\\d+(\\.\\d+)?mmネジ径：\\d+(\\.\\d+)?mm●重量：約\\d+(\\.\\d+)?g\\(\\d+(\\.\\d+)?個\\)●耐荷重：.+?：\\d+(\\.\\d+)?kg[\p{Han}]+：\\d+(\\.\\d+)?kg●材質：金具：スチール\\(亜鉛メッキ\\)\\ 車輪：ゴム●使用温度範囲：\\-\\d+(\\.\\d+)?～\\d+(\\.\\d+)?℃●入数：\\d+(\\.\\d+)?個●ねじサイズ：\\d+(\\.\\d+)?/\\d+(\\.\\d+)?”\\s\\d+(\\.\\d+)?山$'
+    obj = rg.RegexGenerator(S,querys,pattern)
+    obj.excute()
+    extracted_elements =  obj.extracted_elements
+    assert extracted_elements == querys
 
 
-
-
+def testcase_complex5():
+    S = 'S1×S2,P1×P223×43,100×90'
+    querys = ['S1×S2','P','1','P2','23','43','100','90']
+    pattern = '^[A-Z]\d×[A-Z]\d,P1×P2\d+×\d+,\d+×\d+$'
+    obj = rg.RegexGenerator(S,querys,pattern)
+    obj.excute()
+    extracted_elements =  obj.extracted_elements
+    assert extracted_elements == querys

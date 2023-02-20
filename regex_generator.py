@@ -125,6 +125,10 @@ class RegexGenerator():
     def get_capture_regex(self, token):
         if re.search('^\d(?:[\./]?\d+)?$', token):
             return '(\d(?:[\./]?\d+)?)'
+        elif regex.search('^\d(?:[\./]?\d+)?[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
+            return '(\d.*?)'
+        elif re.search('^[A-Z]+\d(?:[\./]?\d+)?$', token):
+            return '([A-Za-z]+\d(?:[\./]?\d+)?)'
         elif regex.search('^[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
             return '(\D+?)'
         else:
@@ -137,13 +141,15 @@ class RegexGenerator():
             return False
 
     def is_correct_extract_element(self, query, gen_regex):
-
-        extract_element = regex.findall(gen_regex, self.attrValue)[0]
-        if extract_element == query:
-            return True
-        else:
+        try:
+            extract_element = regex.findall(gen_regex, self.attrValue)[0]
+            if extract_element == query:
+                return True
+            else:
+                return False
+        except :
+            print('Sytax invalid regular expression provided.')
             return False
-
     def try_fix_regex(self, gen_regex, prefix, suffix):
 
         if self.ever_regex[-2] == '\\':
@@ -167,7 +173,7 @@ class RegexGenerator():
         cap_reg = self.get_capture_regex(self.tokens[idx])
         gen_regex = prefix + cap_reg + suffix
 
-        self.save_ever_regex(idx)
+        self.save_ever_regex(idx if idx != 0 else 1)
 
         if self.is_existed_regex(gen_regex) or not self.is_correct_extract_element(query, gen_regex):
             gen_regex = self.try_fix_regex(gen_regex, prefix, suffix)
@@ -175,8 +181,7 @@ class RegexGenerator():
         self.query_regex.append(gen_regex)
 
         self.pre_idx = idx
-
-        return self.try_regex_minimize(gen_regex, query, prefix, suffix, idx)
+        return self.try_regex_minimize(gen_regex, query, prefix + cap_reg + suffix,prefix, suffix, idx)
 
     def excute(self):
         for q in self.query:
@@ -189,6 +194,7 @@ class RegexGenerator():
             except:
                 print(output)
                 self.extracted_elements.append('')
+        print(self.tokens)
     def save_ever_regex(self, idx):
 
         for i in range(self.pre_idx, idx):
@@ -202,36 +208,47 @@ class RegexGenerator():
             else:
                 continue
 
-    def try_regex_minimize(self, gen_regex, query, prefix, suffix, idx):
+    def try_regex_minimize(self, gen_regex, query,cap_reg, prefix, suffix, idx):
         if len(gen_regex) <= 8:  # 生成される正規表現の長さは最小で lenght=8
             return gen_regex
 
         if self.is_contained_attrValuepattern(prefix) and self.is_contained_attrValuepattern(suffix):
-            new_gen_regex = gen_regex.replace('\d(?:[\./]?\d+)?','.+?').replace('\D+?','.+?')
+            
+
+            # キャプチャする正規表現から１つずつ前に遡り、queryと同じものがとれる正規表現はあるかを走査する。
+            new_gen_regex = gen_regex
+            idx = gen_regex.find(cap_reg)
+            for i in reversed(range(0,idx)):
+                new_gen_regex = gen_regex[i:]
+
+                try:
+                    extracted = re.findall(new_gen_regex,self.attrValue)[0]
+                    if extracted == query:
+                        break
+                except:
+                    continue
+
+            new_gen_regex = new_gen_regex.replace('\d(?:[\./]?\d+)?','.+?').replace('\D+?','.+?')
             if self.is_correct_extract_element(query,new_gen_regex):
                 gen_regex = new_gen_regex
-            
-            # 何らかの処理で正規表現を短くする
-
-            """   
-            tmp_ever_regex =self.ever_regex.replace('.+?','').replace('\\','') #patternに含まれる限定した文字のみ
-            tmp,tmp1 = '',''
-            regex_list = []
-            for i in reversed(range(len(tmp_ever_regex))):
-                tmp = '.*' + re.escape(tmp_ever_regex[i] ).replace('s','\s').replace('\\\n','\n')
-                tmp1 = tmp + tmp1
-                new_regex = tmp1 + gen_regex
-                print(new_regex)
-                if self.is_correct_extract_element(query, new_regex):
-                    regex_list.append(new_regex)
-            """
         return gen_regex
 
 
-'''
-S = 'サイズ/Rc1/8、100cm、(方法/ねじ込み)空気、別尺ー・：100mm'
-pattern = 'サイズ/[A-Z]+\d/\d、\d+cm、\([\p{Han}\p{Katakana}\p{Hiragana}ー]+/[\p{Han}\p{Katakana}\p{Hiragana}ー]+\)[\p{Han}\p{Katakana}\p{Hiragana}ー]+、[\p{Han}\p{Katakana}\p{Hiragana}ー]+・：\d+mm'
-querys = ["Rc", "1/8", '100', '方法/ねじ込み', '空気', '100']
-instance =RegexGenerator(S,querys,pattern)
-instance.excute()
-'''
+
+for d in data:
+    flag = False
+    result = []
+    tmp = d.query(条件):
+    if flag and len(tmp)>0:
+       result = 処理 
+       flag = True
+    tmp = d.query(条件):
+    if flag and len(tmp)>0:
+       result = 処理 
+       flag = True
+    tmp = d.query(条件):
+    if flag and len(tmp)>0:
+       result = 処理 
+       flag = True
+    result = function(result)
+    
