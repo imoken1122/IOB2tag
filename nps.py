@@ -16,7 +16,9 @@ import re,regex
 TARGET_SHEET_URL = ''
 MASTER_SHEET_URL = ''
 SAGYO_SHEET_URL = ''
+CKP_PATH = ''
 MODEL_NAME = 'cl-tohoku/bert-base-japanese-whole-word-masking'
+ENTITY_TYPES = []
 
 class NER_tokenizer_BIO(BertJapaneseTokenizer):
 
@@ -241,7 +243,7 @@ class NER_Bert:
         encoding, spans = self.tokenizer.encode_plus_untagged(
             text, return_tensors='pt'
         )
-        encoding = { k: v.cuda() for k, v in encoding.items() } 
+        encoding = { k: v for k, v in encoding.items() } 
         
         with torch.no_grad():
             output = self.bert_tc(**encoding)
@@ -277,7 +279,7 @@ class NemericalAttrValueSplittingSheet:
         cols = df.columns
         grouped_original = dict()
         
-        for ng in df.select('id').unique().to_numpy():
+        for ng in df.select('ngroup').unique().to_numpy():
             group_rows = filter(pl.col('ngroup')==ng).to_numpy()
             data = list(map(lambda x :{c : xi for c, xi in zip(cols,x)},group_rows))
             if id not in grouped_original:
@@ -440,6 +442,8 @@ def main():
     master_df = load_spreadsheet(MASTER_SHEET_URL)
     target_df = load_spreadsheet(TARGET_SHEET_URL)
     sagyo_df = load_spreadsheet(SAGYO_SHEET_URL)
-    req_attrValues = sagyo_df['attrValue']
-    navss = NemericalAttrValueSplittingSheet(target_df,master_df, req_attrValues)
+    bert_model = NER_Bert(CKP_PATH,MODEL_NAME, ENTITY_TYPES)
+    req_attrValues = sagyo_df.select(pl.col('is_req_attr') == 'TRUE')['attrName'].to_numpy()
+    navss = NemericalAttrValueSplittingSheet(target_df,master_df, req_attrValues, bert_model)
+    navss.create_NASsheet(target_df)
 
