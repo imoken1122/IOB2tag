@@ -194,7 +194,6 @@ class RegexGenerator():
             except:
                 print(output)
                 self.extracted_elements.append('')
-        print(self.tokens)
     def save_ever_regex(self, idx):
 
         for i in range(self.pre_idx, idx):
