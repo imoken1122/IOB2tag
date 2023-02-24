@@ -7,29 +7,33 @@ m = MeCab.Tagger()
 
 
 class RegexGenerator():
-    def __init__(self, attrValue, phrases, attrValue_pattern):
+    def __init__(self, attrValue:str, element_values:list, attrValue_pattern:str):
         self.attrValue = attrValue
-        self.query = phrases
+        self.element_values = element_values
         self.pattern = attrValue_pattern
         self.ever_regex = '^'
-        self.query_regex = []
+        self.element_values_regex = []
         self.pre_idx = 0
-        self.extracted_elements = []
-        self.pretokens = self.phrase_split(attrValue, phrases)
-        self.tokens = self.subtoken_split(self.pretokens, phrases)
+        self.extracted_element_values = []
+        self.tokens = self.preprocess(attrValue, element_values)
 
     # preprocess functions below
+    def preprocess(self, attrValue, element_values):
+        pretokens = self.split_attrValue_into_element_values(attrValue, element_values)
+        tokens = self.parse_non_elements(pretokens, element_values)
+        return tokens
+        
 
-    def phrase_split(self, text, phrases,):
+    def split_attrValue_into_element_values(self, text, element_values,):
         token = []
         start = 0
-        for i, phrase in enumerate(phrases):
-            end = text.find(phrase, start)
+        for i, e_i in enumerate(element_values):
+            end = text.find(e_i, start)
             if end == -1:
                 break
             token.append(text[start:end])
-            token.append(phrase)
-            start = end + len(phrase)
+            token.append(e_i)
+            start = end + len(e_i)
         token.append(text[start:])
         return token
 
@@ -56,22 +60,22 @@ class RegexGenerator():
             result.append(temp)
         return result
 
-    def subtoken_split(self, token, phrases):
+    def parse_non_elements(self, token, element_values):
         result = []
 
         for i in range(len(token)):
-            if token[i] not in phrases:
+            if token[i] not in element_values:
                 if re.search("(\s|\n)", token[i]) != None:
 
-                    subtoken = sum([self.tokenizer(t) if t not in [" ", '\n'] else [
+                    parsed_token = sum([self.tokenizer(t) if t not in [" ", '\n'] else [
                                    t] for t in self.separate_meta_string(token[i])], [])
                 else:
-                    subtoken = self.tokenizer(token[i])
+                    parsed_token = self.tokenizer(token[i])
 
             else:
-                subtoken = [token[i]]
+                parsed_token = [token[i]]
 
-            result += subtoken
+            result += parsed_token
         return result
 
     def is_contained_attrValuepattern(self, text):
@@ -88,15 +92,14 @@ class RegexGenerator():
         if idx != 0:
 
             prefix = self.get_metastring_or_token(self.tokens[idx-1])
-
             if not self.is_contained_attrValuepattern(prefix):
                 if re.search('\\d', prefix[-1]):
                     prefix = '\d'
 
                 elif self.tokens[idx-2] == '\\':
                     prefix = ''.join(self.tokens[idx-2:idx])
-               # elif not re.search('\D', prefix[-1]) is None:
-               #     prefix = '\D'
+                elif not re.search('\D', prefix[-1]) is None:
+                    prefix = '\D+?'
                 else:
                     # prefix = '[\\p{Script=Han}]\\p{Script=Katakana}\\p{Script=Hiragana}A-Za-zー]'
                     prefix = '.+?'
@@ -123,32 +126,32 @@ class RegexGenerator():
         return prefix, suffix
 
     def get_capture_regex(self, token):
-        if re.search('^\d(?:[\./]?\d+)?$', token):
-            return '(\d(?:[\./]?\d+)?)'
-        elif regex.search('^\d(?:[\./]?\d+)?[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
+        if re.search('^\d+(?:[\./]\d+)?$', token):
+            return '(\d+(?:[\./]\d+)?)'
+        elif regex.search('^\d+(?:[\./]\d+)?[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
             return '(\d.*?)'
-        elif re.search('^[A-Z]+\d(?:[\./]?\d+)?$', token):
-            return '([A-Za-z]+\d(?:[\./]?\d+)?)'
+        elif re.search('^[A-Z]+\d+(?:[\./]\d+)?$', token):
+            return '([A-Za-z]+\d+(?:[\./]\d+)?)'
         elif regex.search('^[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
             return '(\D+?)'
         else:
             return '(.+?)'
 
     def is_existed_regex(self, gen_regex):
-        if gen_regex in self.query_regex:
+        if gen_regex in self.element_values_regex:
             return True
         else:
             return False
 
-    def is_correct_extract_element(self, query, gen_regex):
+    def is_correct_extract_element(self, element, gen_regex):
         try:
             extract_element = regex.findall(gen_regex, self.attrValue)[0]
-            if extract_element == query:
+            if extract_element == element:
                 return True
             else:
                 return False
         except :
-            print('Sytax invalid regular expression provided.')
+            print('E : Syntax invalid regular expression provided. -> ', self.attrValue ,element, gen_regex)
             return False
     def try_fix_regex(self, gen_regex, prefix, suffix):
 
@@ -164,36 +167,35 @@ class RegexGenerator():
 
         return gen_regex
 
-    def generate_regex(self, query):
+    def generate_regex(self, element):
 
-        idx = self.tokens[self.pre_idx:].index(query) + self.pre_idx
+        idx = self.tokens[self.pre_idx:].index(element) + self.pre_idx
 
         prefix, suffix = self.get_prefix_and_suffix(idx)
-
         cap_reg = self.get_capture_regex(self.tokens[idx])
         gen_regex = prefix + cap_reg + suffix
 
         self.save_ever_regex(idx if idx != 0 else 1)
 
-        if self.is_existed_regex(gen_regex) or not self.is_correct_extract_element(query, gen_regex):
+        if self.is_existed_regex(gen_regex) or not self.is_correct_extract_element(element, gen_regex):
             gen_regex = self.try_fix_regex(gen_regex, prefix, suffix)
 
-        self.query_regex.append(gen_regex)
+        self.element_values_regex.append(gen_regex)
 
         self.pre_idx = idx
-        return self.try_regex_minimize(gen_regex, query, prefix + cap_reg + suffix,prefix, suffix, idx)
+        return self.try_regex_minimize(gen_regex, element, prefix + cap_reg + suffix,prefix, suffix, idx)
 
     def excute(self):
-        for q in self.query:
+        for q in self.element_values:
             gen_regex = self.generate_regex(q)
             output = gen_regex
 
             try:
                 print(r'{0}'.format(output), '\t', re.findall(output, self.attrValue)[0])
-                self.extracted_elements.append(re.findall(output, self.attrValue)[0])
+                self.extracted_element_values.append(re.findall(output, self.attrValue)[0])
             except:
                 print(output)
-                self.extracted_elements.append('')
+                self.extracted_element_values.append('')
     def save_ever_regex(self, idx):
 
         for i in range(self.pre_idx, idx):
@@ -207,14 +209,12 @@ class RegexGenerator():
             else:
                 continue
 
-    def try_regex_minimize(self, gen_regex, query,cap_reg, prefix, suffix, idx):
-        if len(gen_regex) <= 8:  # 生成される正規表現の長さは最小で lenght=8
-            return gen_regex
-
+    def try_regex_minimize(self, gen_regex, element,cap_reg, prefix, suffix, idx):
+        
         if self.is_contained_attrValuepattern(prefix) and self.is_contained_attrValuepattern(suffix):
             
 
-            # キャプチャする正規表現から１つずつ前に遡り、queryと同じものがとれる正規表現はあるかを走査する。
+            # キャプチャする正規表現から１つずつ前に遡り、element_valuesと同じものがとれる正規表現はあるか走査する。
             new_gen_regex = gen_regex
             idx = gen_regex.find(cap_reg)
             for i in reversed(range(0,idx)):
@@ -222,14 +222,13 @@ class RegexGenerator():
 
                 try:
                     extracted = re.findall(new_gen_regex,self.attrValue)[0]
-                    if extracted == query:
+                    if extracted == element:
                         break
                 except:
                     continue
 
-            new_gen_regex = new_gen_regex.replace('\d(?:[\./]?\d+)?','.+?').replace('\D+?','.+?')
-            if self.is_correct_extract_element(query,new_gen_regex):
+            new_gen_regex = new_gen_regex.replace('\d+(?:[\./]\d+)?','.+?').replace('\D+?','.+?').replace('\d.*?','.+?').replace('[A-Za-z]+\d+(?:[\./]\d+)?','.+?')
+            if self.is_correct_extract_element(element,new_gen_regex):
                 gen_regex = new_gen_regex
         return gen_regex
-
 
