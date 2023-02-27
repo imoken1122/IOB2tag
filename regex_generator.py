@@ -126,6 +126,8 @@ class RegexGenerator():
         return prefix, suffix
 
     def get_capture_regex(self, token):
+        if re.search('\n', token):
+            return '([\s\S]+?)'
         if re.search('^\d+(?:[\./]\d+)?$', token):
             return '(\d+(?:[\./]\d+)?)'
         elif regex.search('^\d+(?:[\./]\d+)?[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
@@ -172,7 +174,9 @@ class RegexGenerator():
         idx = self.tokens[self.pre_idx:].index(element) + self.pre_idx
 
         prefix, suffix = self.get_prefix_and_suffix(idx)
+
         cap_reg = self.get_capture_regex(self.tokens[idx])
+
         gen_regex = prefix + cap_reg + suffix
 
         self.save_ever_regex(idx if idx != 0 else 1)
@@ -182,7 +186,7 @@ class RegexGenerator():
 
         self.element_values_regex.append(gen_regex)
 
-        self.pre_idx = idx
+        self.pre_idx = idx if idx != 0 else 1
         return self.try_regex_minimize(gen_regex, element, prefix + cap_reg + suffix,prefix, suffix, idx)
 
     def excute(self):
@@ -204,6 +208,8 @@ class RegexGenerator():
             token = self.get_metastring_or_token(token)
             if self.is_contained_attrValuepattern(token):
                 self.ever_regex += token
+            elif re.search('\n', token):
+                self.ever_regex += '[\s\S]+?'
             elif self.ever_regex[-1] != '?':
                 self.ever_regex += '.+?'
             else:

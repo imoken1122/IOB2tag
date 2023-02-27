@@ -5,6 +5,7 @@ def excute(S,querys,pattern):
     obj = rg.RegexGenerator(S,querys,pattern)
     obj.excute()
     extracted_element_values =  obj.extracted_element_values
+
     return extracted_element_values
 
 
@@ -15,9 +16,9 @@ def testcase_easy():
     assert querys == excute(S,querys,pattern)
 
 def testcase_standard():
-    S = 'サイズ/Rc1/8、100cm、(方法/ねじ込み)空気、別尺ー・：100mm'
-    pattern = 'サイズ/[A-Z]+\d/\d、\d+cm、\([\p{Han}\p{Katakana}\p{Hiragana}ー]+/[\p{Han}\p{Katakana}\p{Hiragana}ー]+\)[\p{Han}\p{Katakana}\p{Hiragana}ー]+、[\p{Han}\p{Katakana}\p{Hiragana}ー]+・：\d+mm'
-    querys = ["Rc", "1/8", '100', '方法/ねじ込み', '空気', '100']
+    S = 'サイズ/Rc1/8、-100cm、(方法/ねじ込み)空気、別尺ー・：100mm'
+    pattern = 'サイズ/[A-Z]+\d/\d、-\d+cm、\([\p{Han}\p{Katakana}\p{Hiragana}ー]+/[\p{Han}\p{Katakana}\p{Hiragana}ー]+\)[\p{Han}\p{Katakana}\p{Hiragana}ー]+、[\p{Han}\p{Katakana}\p{Hiragana}ー]+・：\d+mm'
+    querys = ["Rc", "1/8", '-100', '方法/ねじ込み', '空気', '100']
 
     assert querys == excute(S,querys,pattern)
 def test_continue_same_patern():
@@ -67,8 +68,8 @@ def testcase_complex4():
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex5():
-    S = 'S1×S2,P1×P223×43,100×90'
-    querys = ['S1×S2','P','1','P2','23','43','100','90']
-    pattern = '^[A-Z]\d×[A-Z]\d,P1×P2\d+×\d+,\d+×\d+$'
+    S = '-999×-999×-999'
+    querys = ['-999', '-999', '-999']
+    pattern = '^-\d+×-\d+×-\d+$'
 
     assert querys == excute(S,querys,pattern)

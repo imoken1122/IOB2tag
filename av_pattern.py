@@ -44,7 +44,7 @@ class attrValue_RegexGenerator:
 
         # 数値の前にある文字
         kigo = ['W', 'M',"L","H","D","P",'S',"VP","各","X","x"]
-        kigo_re ="(?:\d|\s|\(|×)?(" + "|".join(prefix) +")(?:\d|\s|：|:|\)|×)"
+        kigo_re ="(?:\d|\s|\(|×)?(" + "|".join(kigo) +")(?:\d|\s|：|:|\)|×)"
 
         #　グループで限定する文字
         pttn_list  =[ ['PT', 'Pt', 'RC', 'Rc', 'RP', 'Rp', 'PS', 'Ps', 'G', 'PF', 'Pf', 'PJ', "R"],
@@ -95,7 +95,8 @@ class attrValue_RegexGenerator:
     def _symbol2literal_word(self,attrValue:str, mappings : list):
         mappings = sorted(mappings,key = lambda x : x[1])
         for i in range(len(mappings)):
-            attrValue = re.sub('!{1,}',mappings[i][0],attrValue,1)
+            l = len(mappings[i][0])
+            attrValue = re.sub('!'*l,mappings[i][0],attrValue,1)
         return attrValue
 
     def _convert_to_symbol(self,attrValue):
@@ -118,11 +119,11 @@ class attrValue_RegexGenerator:
 
 
     def _symbol2regex(self,symbolized_attrValue):
-        to_regex = lambda s : s.replace("[呼び径]",'\d*?[ ・-]?(1/2|3/8|3/4|1/4|1/8)?[""]?').replace("[文字]","[\p{Han}\p{Katakana}\p{Hiragana}A-Za-zー]+").replace("[管種類]","(R|PT|Pt|RC|Rc|RP|Rp|PS|Ps|G|PF|Pf|PJ)").replace("[数値]","[\d,]+(\.\d+)?")
+        to_regex = lambda s : s.replace("[呼び径]",'\d*?[ ・-]?(1/2|3/8|3/4|1/4|1/8)?[""]?').replace("[文字]","[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+").replace("[管種類]","(R|PT|Pt|RC|Rc|RP|Rp|PS|Ps|G|PF|Pf|PJ)").replace("[数値]","[\d,]+(\.\d+)?")
         return "^"+to_regex(symbolized_attrValue)+"$"
 
     def _sequential_symbol2regex(self,symbolized_attrValue,split_str): 
-        to_regex = lambda s : s.replace("[呼び径]",'\d*?[ ・-]?(1/2|3/8|3/4|1/4|1/8)?[""]?').replace("[文字]","[\p{Han}\p{Katakana}\p{Hiragana}A-Za-zー]+").replace("[管種類]","(R|PT|Pt|RC|Rc|RP|Rp|PS|Ps|G|PF|Pf|PJ)").replace("[数値]","[\d,]+(\.\d+)?")
+        to_regex = lambda s : s.replace("[呼び径]",'\d*?[ ・-]?(1/2|3/8|3/4|1/4|1/8)?[""]?').replace("[文字]","[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+").replace("[管種類]","(R|PT|Pt|RC|Rc|RP|Rp|PS|Ps|G|PF|Pf|PJ)").replace("[数値]","[\d,]+(\.\d+)?")
         return f"^({split_str}?" + to_regex(symbolized_attrValue) + "){1,}$"
     
     def _is_sequential(self,symbolized_attrValue):
@@ -149,13 +150,13 @@ class attrValue_RegexGenerator:
 import pytest
 
 def test1():
-    s='RC1/2"×幅100mm, 最大100m, 最小10m'
-    lc = [['(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
+    s='●サイズRC34mm：2150mm×1150mm×両サイドガゼット430mm×2●材質：ポリエチレン●入数：5枚●適用サイズ：1100×800×1700～1900mm'
+    lc = [['(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅|サイズ|W)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
     avpg = attrValue_RegexGenerator(lc)
     result = avpg._attrValue2regex(s)
 
     print(result)
-    assert s == re.search(result,s).group()
+    assert re.match(result,s) is not None
 
 def test2():
     s = '(ねじ込み)100m,(叩き込み)10m'
@@ -164,5 +165,5 @@ def test2():
     result = avpg._attrValue2regex(s)
     print(result)
     assert s == re.search(result,s).group()
-
+test1()
 
