@@ -213,6 +213,7 @@ class RegexGenerator():
                 self.ever_regex += '.+?'
             else:
                 continue
+            
 
     def try_regex_minimize(self, gen_regex, element, cap_reg, prefix, suffix, idx):
 
