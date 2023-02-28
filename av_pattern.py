@@ -65,12 +65,12 @@ class attrValue_RegexGenerator:
 
     def _word2symbol(self,attrValue:str):
         word = attrValue
-        word = re.escape(word)
+
         p = regex.compile(r'[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}A-Za-zー]+')
         word = p.sub("[文字]",word)
         p = regex.compile(r'\d*?[ ・-]?(1/2|3/8|3/4|1/4|1/8)[""]?')
         word = p.sub("[呼び径]",word)
-        p = regex.compile(r'\d+(,\.\d+)?')
+        p = regex.compile(r'\d+(,?\.\d+)?')
         word = p.sub("[数値]",word)
         word = word.replace('\\ ','\\s')
         return word
@@ -87,7 +87,8 @@ class attrValue_RegexGenerator:
                 idx = match.start()
                 elm = literal_word_regex if is_save_regex_phase else e
                 lit_word2idx.append((elm, idx))
-                attrValue = attrValue[:idx] + '!' * len(elm) + attrValue[idx+len(e):]
+                #attrValue = attrValue[:idx] + '!' * len(elm) + attrValue[idx+len(e):]
+                attrValue = re.sub(elm,'!'*len(elm),attrValue,1)
 
         return attrValue, lit_word2idx
 
@@ -151,7 +152,7 @@ import pytest
 
 def test1():
     s='●サイズRC34mm：2150mm×1150mm×両サイドガゼット430mm×2●材質：ポリエチレン●入数：5枚●適用サイズ：1100×800×1700～1900mm'
-    lc = [['(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅|サイズ|W)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
+    lc = [['(?:\d)(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅|サイズ|W)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
     avpg = attrValue_RegexGenerator(lc)
     result = avpg._attrValue2regex(s)
 
@@ -159,12 +160,12 @@ def test1():
     assert re.match(result,s) is not None
 
 def test2():
-    s = '【ねじ込み】23.8\n【ねじ込み】23.8\n【ねじ込み】23.8'
-    lc = [['(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
+    s = '【ねじ込み】23.8mm\n【ねじ込み】2.8mm\n【ねじ込み】23.8m'
+    lc = [['(?:\d)(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
     avpg = attrValue_RegexGenerator(lc)
     result = avpg._attrValue2regex(s)
     print(result)
     assert s == re.search(result,s).group()
-test2()
+test1()
 
 
