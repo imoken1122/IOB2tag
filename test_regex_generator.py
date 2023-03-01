@@ -28,16 +28,17 @@ def test_continue_same_patern():
     assert querys == excute(S,querys,pattern)
 
 def testcase_contain_many_newline():
-    S = '【ねじ込み】23.8\n56折りたたみ98(常時)\n\n2348(非常時)mm'
-    querys = ['ねじ込み', '23.8', '56', '折りたたみ', '98', '常時', '2348', '非常時']
-    pattern = '【[\p{Han}+]】\d+\n\d+[\p{Han}+]\d+\([\p{Han}+]\)\n\n\d+\(\p{Han}+\)mm'
+    S = '【ねじ込み】23/8\n5/76折りたたみ9/8(常時)\n\n2/48(非常時)mm'
+    querys = ['ねじ込み', '23/8', '5/76', '折りたたみ', '9/8', '常時', '2/48', '非常時']
+    pattern = '【[\p{Han}+]】\d+\n[\d\.]+[\p{Han}+]\d+\([\p{Han}+]\)\n\n\d+\(\p{Han}+\)mm'
 
     assert querys == excute(S,querys,pattern)
 
+
 def testcase_contain_many_space():
-    S = '商品名 テスト商品 商品コード 12345 単価 100 '
+    S = '商品名 テスト商品 商品コード\n12345 単価 100 '
     querys = ['テスト商品', '12345', '100']
-    pattern = '商品名\s[\p{Han}\p{Katakana}\p{Hiragana}]+\s商品コード\s\d+\s単価\s\d+\s'
+    pattern = '商品名\s[\p{Han}\p{Katakana}\p{Hiragana}]+\s商品コード\n\d+\s単価\s\d+\s'
 
     assert querys == excute(S,querys,pattern)
 def testcase_complex1():
@@ -61,22 +62,22 @@ def testcase_complex3():
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex4():
-    S = '●仕様：自在ストッパー付●サイズ：キャスター：Φ100\n24.5(幅)mm取付高：125mmネジ径：9mm●重量：約550g(1個)●耐荷重：静止時：400kg走行移動時：80kg●材質：金具：スチール(亜鉛メッキ) 車輪：ゴム●使用温度範囲：-40～80℃●入数：2個●ねじサイズ：3/8” 16山'
+    S = '●仕様：自在ストッパー付●サイズ：キャスター：Φ100\n24.5(幅)mm取付高：125mmネジ径：9mm●重量：約550g(1個)●耐荷重：静止時：400走行移動時：80kg●材質：金具：スチール(亜鉛メッキ) 車輪：ゴム●使用温度範囲：-40～80℃●入数：2個●ねじサイズ：3/8” 16山'
     querys = ['自在','付','100\n24.5','静止時','400','走行移動時','80','3/8','16']
-    pattern = '^●仕様：(自在|固定)ストッパー.+?●サイズ：キャスター：Φ\\d+(\\.\\d+)?\n\\d+(\\.\\d+)?\\.\\d+(\\.\\d+)?\\(幅\\)mm取付高：\\d+(\\.\\d+)?mmネジ径：\\d+(\\.\\d+)?mm●重量：約\\d+(\\.\\d+)?g\\(\\d+(\\.\\d+)?個\\)●耐荷重：.+?：\\d+(\\.\\d+)?kg[\p{Han}]+：\\d+(\\.\\d+)?kg●材質：金具：スチール\\(亜鉛メッキ\\)\\ 車輪：ゴム●使用温度範囲：\\-\\d+(\\.\\d+)?～\\d+(\\.\\d+)?℃●入数：\\d+(\\.\\d+)?個●ねじサイズ：\\d+(\\.\\d+)?/\\d+(\\.\\d+)?”\\s\\d+(\\.\\d+)?山$'
+    pattern = '^●仕様：(自在|固定)ストッパー.+?●サイズ：キャスター：Φ\\d+(\\.\\d+)?\n\\d+(\\.\\d+)?\\.\\d+(\\.\\d+)?\\(幅\\)mm取付高：\\d+(\\.\\d+)?mmネジ径：\\d+(\\.\\d+)?mm●重量：約\\d+(\\.\\d+)?g\\(\\d+(\\.\\d+)?個\\)●耐荷重：.+?：\\d+(\\.\\d+)?[\p{Han}]+：\\d+(\\.\\d+)?kg●材質：金具：スチール\\(亜鉛メッキ\\)\\ 車輪：ゴム●使用温度範囲：\\-\\d+(\\.\\d+)?～\\d+(\\.\\d+)?℃●入数：\\d+(\\.\\d+)?個●ねじサイズ：\\d+(\\.\\d+)?/\\d+(\\.\\d+)?”\\s\\d+(\\.\\d+)?山$'
 
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex5():
-    S = '-999×-999×-999×-999'
-    querys = ['-999', '-999', '-999','-999']
+    S = '-999×-999×-9/99×-999'
+    querys = ['-999', '-999', '-9/99','-999']
     pattern = '^-\d+×-\d+×-\d+×-\d+$'
 
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex6():
-    S = '【ねじ込み】23.8\n【ねじ込み】23.8\n【ねじ込み】23.8'
-    querys = ['ねじ込み', '23.8\n【ねじ込み】23.8','ねじ込み', '23.8'] 
-    pattern = '^【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\.[\d,]+(\.\d+)?\\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\.[\d,]+(\.\d+)?\\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\.[\d,]+(\.\d+)?$'
+    S = '【ねじ込み】2/38\n【ねじ込み】23/8\n【ねじ込み】23.8'
+    querys = ['ねじ込み', '2/38\n【ねじ込み】23/8','ねじ込み', '23.8'] 
+    pattern = '^【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?$'
 
     assert querys == excute(S,querys,pattern)
