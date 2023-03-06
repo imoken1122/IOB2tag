@@ -8,21 +8,44 @@ m = MeCab.Tagger()
 
 class RegexGenerator():
     def __init__(self, attrValue: str, element_values: list, attrValue_pattern: str):
+        self.tmp_attrValue = attrValue
         self.attrValue = attrValue
         self.element_values = element_values
         self.pattern = attrValue_pattern
         self.element_values_regex = []
         self.extracted_element_values = []
-        self.tokens = self.preprocess(attrValue, element_values)
+        self.tokens = self.preprocess(attrValue, self.element_values)
         self.tmp_tokens = self.tokens.copy()
         self.token_regex = self.convert_tokens_to_regex(self.tokens)
 
+
     # preprocess functions below
+
+
+
     def preprocess(self, attrValue, element_values):
-        pretokens = self.split_attrValue_into_element_values(
+        #element_valuesとそうではないものと分割
+        tokens = self.split_attrValue_into_element_values(
             attrValue, element_values)
-        tokens = self.parse_non_elements(pretokens, element_values)
+        #tokens = self.parse_non_elements(pretokens, element_values)
         return tokens
+
+    def assign_id_element_values(self,element_values):
+
+        # 各要素に一意のIDを割り当てるための辞書を作成する
+        id_dict = {}
+        new_list = []
+        for elem in element_values:
+            if elem not in id_dict.keys():
+                id_dict[elem] = 0
+            new_list.append(elem + f'_id_{id_dict[elem]}')
+            id_dict[elem] += 1
+
+
+        return new_list
+
+
+
 
     def split_attrValue_into_element_values(self, text, element_values,):
         token = []
@@ -31,12 +54,21 @@ class RegexGenerator():
             end = text.find(e_i, start)
             if end == -1:
                 break
-            token.append(text[start:end])
+            token.extend(self.parse_non_element(text[start:end]))
             token.append(e_i)
             start = end + len(e_i)
-        token.append(text[start:])
+        token.extend(self.parse_non_element(text[start:]))
         return token
+    
+    def parse_non_element(self,token):
+        if re.search("(\s|\n)", token) != None:
 
+            parsed_token = sum([self.tokenizer(t) if t not in [" ", '\n'] else [
+                t] for t in self.separate_meta_string(token)], [])
+        else:
+            parsed_token = self.tokenizer(token)
+        return parsed_token
+    
     def tokenizer(self, text):
         result = m.parse(text)
         # 分かち書き結果を分割
@@ -92,6 +124,7 @@ class RegexGenerator():
         if idx != 0:
 
             prefix = self.get_metastring_or_token(self.tokens[idx-1])
+
             if not self.is_contained_attrValuepattern(prefix):
                 if re.search('\\d', prefix[-1]):
                     prefix = '[\d\./]+'
@@ -106,7 +139,7 @@ class RegexGenerator():
 
         if idx != len(self.tokens)-1:
             suffix = self.get_metastring_or_token(self.tokens[idx+1])
-
+            suffix = self.extract_element('(^[A-Za-z]+)',suffix) if re.search('(^[A-Za-z]+)',suffix) and  suffix in self.element_values else suffix
             if not self.is_contained_attrValuepattern(suffix):
                 if re.search('\\d', suffix[0]):
                     suffix = '\d'
@@ -122,7 +155,7 @@ class RegexGenerator():
     def get_capture_regex(self, token):
         if re.search('\n', token):
             return '(' + re.sub('[^\n]+','.+?',token) + ')'
-        elif re.search('^\d+(?:[\./]\d+)?$', token):
+        elif re.search('^\d+(?:，?[\./]\d+)?$', token):
             return '(\d+(?:[\./]\d+)?)'
         elif regex.search('^\d+(?:[\./]\d+)?[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+$', token):
             return '(\d.*?)'
@@ -139,22 +172,29 @@ class RegexGenerator():
         else:
             return False
 
-    def is_correct_extract_element(self, element, gen_regex):
+
+    def extract_element(self, gen_regex, attrValue, verbose=False):
         try:
-            extract_element = regex.findall(gen_regex, self.attrValue)[0]
-            if extract_element == element:
-                return True
-            else:
-                return False
+            extracted_element = regex.findall(gen_regex,attrValue)[0]
+            return extracted_element
         except:
-            print('E : Syntax invalid regular expression provided. -> ',element, gen_regex)
-            return False
+            if verbose:
+                print('E : Syntax invalid regular expression provided. -> ', gen_regex)
+            return ""
+
 
 
     def concat_ever_token_regex(self,ever_regex,gen_regex):
 
         return '^' + "".join(ever_regex[:]) + gen_regex
-            
+    
+    def is_incorrect_generated_regex(self,element,gen_regex):
+
+        return self.is_existed_regex(gen_regex) \
+                or (
+                    element != self.extract_element(gen_regex, self.tmp_attrValue) 
+                    or element != self.extract_element( gen_regex,self.attrValue)
+                ) 
 
     def generate_regex(self, element):
 
@@ -162,28 +202,27 @@ class RegexGenerator():
         prefix, suffix = self.get_prefix_and_suffix(idx)
         cap_reg = self.get_capture_regex(element)
         gen_regex = prefix + cap_reg + suffix
-
-        if self.is_existed_regex(gen_regex) or not self.is_correct_extract_element(element, gen_regex):
+        if self.is_incorrect_generated_regex(element,gen_regex):
             gen_regex = self.concat_ever_token_regex(self.token_regex[:idx-1],gen_regex)
         gen_regex =  self.try_regex_minimize(gen_regex, element, prefix + cap_reg + suffix, prefix, suffix, idx)
-        self.element_values_regex.append(gen_regex)
-        #self.next_idx = idx + 1
-        self.tmp_tokens[idx]='!'
+        self.tmp_tokens[idx] = '!'
+        self.tmp_attrValue = re.sub(element,'!',self.tmp_attrValue,1)
         return gen_regex
 
     def excute(self):
-        
         for q in self.element_values:
             gen_regex = self.generate_regex(q)
             output = gen_regex
 
             try:
-                print(r'{0}'.format(output), '\t',re.findall(output, self.attrValue)[0])
+               # print(r'{0}'.format(output), '\t',re.findall(output, self.attrValue)[0])
                 self.extracted_element_values.append(
                     re.findall(output, self.attrValue)[0])
+                self.element_values_regex.append(gen_regex)
             except:
-                print(output)
+                #print(output)
                 self.extracted_element_values.append('')
+                self.element_values_regex.append('')
 
     def convert_tokens_to_regex(self,tokens):
         
@@ -209,18 +248,17 @@ class RegexGenerator():
 
         def capture_replace(gen_regex,element):
             new_gen_regex = gen_regex.replace('\d+(?:[\./]\d+)?', '.+?').replace(
-                '\D+?', '.+?').replace('\d.*?', '.+?').replace('[A-Za-z]+\d+(?:[\./]\d+)?', '.+?')
-            return new_gen_regex if self.is_correct_extract_element(element,new_gen_regex) else gen_regex
+                '(\D+?)', '(.+?)').replace('\d.*?', '.+?').replace('[A-Za-z]+\d+(?:[\./]\d+)?', '.+?')
+            return new_gen_regex if not self.is_incorrect_generated_regex(element,new_gen_regex) else gen_regex
 
         # キャプチャする正規表現から１つずつ前に遡り、element_valueと同じものがとれる正規表現はあるか走査する。
         new_gen_regex = gen_regex
         idx = gen_regex.find(cap_reg)
         for i in reversed(range(0, idx)):
             tmp_gen_regex = gen_regex[i:]
-
+           
             try:
-                extracted = re.findall(tmp_gen_regex, self.attrValue)[0]
-                if extracted == element:
+                if not self.is_incorrect_generated_regex(element,tmp_gen_regex):
                     new_gen_regex = tmp_gen_regex
                     break
             except:
