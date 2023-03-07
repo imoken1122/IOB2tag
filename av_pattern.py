@@ -160,12 +160,12 @@ def test1():
     assert re.match(result,s) is not None
 
 def test2():
-    s = '【ねじ込み】23.8mm\n【ねじ込み】2.8mm\n【ねじ込み】23.8m'
+    s = '【ねじ込み】2，38×344×356\n【ねじ込み】28×356×356\n【ねじ込み】23.8×356×356'
     lc = [['(?:\d)(kfg|mm|m)'], ['(最大|最小)(?:\d|\s)'],['(幅)'],['(RC|Rc|R)','(単相|三相|3相)'] ]
     avpg = attrValue_RegexGenerator(lc)
     result = avpg._attrValue2regex(s)
     print(result)
     assert s == re.search(result,s).group()
-test1()
+test2()
 
 

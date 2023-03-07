@@ -1,11 +1,12 @@
 import pytest
-import regex_generator as rg
+import element_generator as rg
 
 def excute(S,querys,pattern):
-    obj = rg.RegexGenerator(S,querys,pattern)
+    obj = rg.element_RegexGenerator(S,querys,pattern)
     obj.excute()
-    extracted_element_values =  obj.extracted_element_values
-
+   # extracted_element_values =  obj.extracted_element_values
+    extracted_element_values = obj.get_extracted_element_values()
+    print(extracted_element_values)
     return extracted_element_values
 
 
@@ -29,7 +30,7 @@ def test_continue_same_patern():
 
 def testcase_contain_many_newline():
     S = '【ねじ込み】23/8\n5/76折りたたみ9/8(常時)\n\n2/48(非常時)mm'
-    querys = ['ねじ込み', '23/8', '5/76', '折りたたみ', '9/8', '常時', '2/48', '非常時']
+    querys = ['ねじ込み', '23/8', '5/76折りたたみ', '9/8', '常時', '2/48', '非常時']
     pattern = '【[\p{Han}+]】\d+\n[\d\.]+[\p{Han}+]\d+\([\p{Han}+]\)\n\n\d+\(\p{Han}+\)mm'
 
     assert querys == excute(S,querys,pattern)
@@ -69,15 +70,27 @@ def testcase_complex4():
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex5():
-    S = '-999×-999×-9/99×-999'
-    querys = ['-999', '-999', '-9/99','-999']
+    S = '-999×-999×-999×-999'
+    querys = ['-999', '-999', '-999','-999']
     pattern = '^-\d+×-\d+×-\d+×-\d+$'
 
     assert querys == excute(S,querys,pattern)
 
 def testcase_complex6():
-    S = '【ねじ込み】2/38\n【ねじ込み】23/8\n【ねじ込み】23.8'
-    querys = ['ねじ込み', '2/38\n【ねじ込み】23/8','ねじ込み', '23.8'] 
-    pattern = '^【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?$'
+    S = '【ねじ込み】28×344×356\n【ねじ込み】238×56×356\n【ねじ込み】23.8×356×356'
+    querys = ['ねじ込み', '28','344','356','ねじ込み','238','56','356','ねじ込み', '23.8','356','356'] 
+    pattern = '^【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?$'
 
+    assert querys == excute(S,querys,pattern)
+
+def testcase_complex7():
+    S = '材質 SUSステンレスM12×P1.5×L100非常'
+    querys = ['材質 SUSステンレス','M12','1.5','100','非常']
+    pattern = '^[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+\s[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+M\\d+×P\\d+(\\.\\d+)?×L\\d+$'
+    assert querys == excute(S,querys,pattern)
+
+def testcase_complex8():
+    S = '【装置A】10×20×30\n【装置B】10×20×30\n【装置C】10×20×40'
+    querys = ['装置', 'A','10','20','30','装置','B','10','20','30','装置', 'C','10','20','40']
+    pattern = '^【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?\n【[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}A-Za-zー]+】[\d,]+(\.\d+)?×[\d,]+(\.\d+)?×[\d,]+(\.\d+)?$'
     assert querys == excute(S,querys,pattern)

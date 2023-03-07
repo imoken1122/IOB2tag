@@ -30,22 +30,6 @@ class RegexGenerator():
         #tokens = self.parse_non_elements(pretokens, element_values)
         return tokens
 
-    def assign_id_element_values(self,element_values):
-
-        # 各要素に一意のIDを割り当てるための辞書を作成する
-        id_dict = {}
-        new_list = []
-        for elem in element_values:
-            if elem not in id_dict.keys():
-                id_dict[elem] = 0
-            new_list.append(elem + f'_id_{id_dict[elem]}')
-            id_dict[elem] += 1
-
-
-        return new_list
-
-
-
 
     def split_attrValue_into_element_values(self, text, element_values,):
         token = []
