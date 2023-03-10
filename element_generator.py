@@ -1,8 +1,3 @@
-from typing import Final
-
-import MeCab
-import re,regex
-m = MeCab.Tagger()
 
 class element_RegexGenerator:
     def __init__(self,attrValue:str, element_values: str, attrValue_pattern:str):
@@ -16,7 +11,7 @@ class element_RegexGenerator:
         self.token_regex = self.convert_tokens_to_regex(self.attrValue_tokens)
         self.element_patterns = []
         self.extracted_element_values = []
-        print(self.token_regex)
+
     def get_attrValue_tokens(self):
         return self.attrValue_tokens
 
@@ -118,7 +113,6 @@ class element_RegexGenerator:
         if idx != 0:
 
             prefix = self.escape_token(tokens[idx-1])
-
             if not self.is_contained_attrValue_pattern(prefix):
                 if re.search('^[\d，]+([\./]d+)?$', prefix):
                     prefix = '[\d\./]+'
@@ -152,7 +146,7 @@ class element_RegexGenerator:
             extracted_element = re.findall(gen_regex, attrValue)[0]
         except:
             if verbose:
-                print('E : Syntax invalid regular expression provided. -> ', gen_regex)
+                print("E : Syntax of the generated element_pattern is incorrect -> \nattrValue : {0}\nelement_value : {1}\nelement_pattern : {2}".format(self.attrValue ,element, gen_regex))
             extracted_element = ''
         return extracted_element
     def extract_element_and_span(self,gen_regex,verbose=False):
@@ -163,16 +157,11 @@ class element_RegexGenerator:
             return (None, None)
 
 
-    def is_correct_generated_regex(self,gen_regex,element,attrValue):
-        try:
-            extracted_element = self.extract_element(gen_regex,attrValue)
-        except:
-            extracted_element = ''
-        if extracted_element == element :
-            return True
-
-        else:
-            return False
+    def is_correct_generated_regex(self,gen_regex,element,elem_idx_on_token):
+        extracted_element,extracted_elem_idx = self.extract_element_and_span(gen_regex)
+        elem_idx_on_attrValue = self.element_index_token2attrValue[elem_idx_on_token]
+            
+        return extracted_element == element and extracted_elem_idx == elem_idx_on_attrValue
     
     def concat_ever_token_regex(self,elem_idx,gen_regex):
         if elem_idx==0: return gen_regex
@@ -198,12 +187,11 @@ class element_RegexGenerator:
             elem_idx = attrValue_tokens.index(elem,pre_idx)
             gen_regex = self.generate_element_pattern(attrValue_tokens,elem, elem_idx)
             try:
-                print(r'{0}'.format(gen_regex))
-                print(re.findall(gen_regex, self.attrValue)[0])
+                #print(r'{0}'.format(gen_regex))
+                #print(re.findall(gen_regex, self.attrValue)[0])
 
-                extracted_element = self.extract_element(gen_regex, self.attrValue)
+                extracted_element = self.extract_element(gen_regex, self.attrValue,True)
             except Exception as error:
-                print('failed -> ', elem, error)
                 gen_regex = ''
                 extracted_element=''
 
@@ -223,52 +211,39 @@ class element_RegexGenerator:
 
         def capture_replace(gen_regex):
             new_gen_regex = gen_regex
-            tmp_gen_regex = gen_regex.replace('[\d，]+(?:[\./]\d+)?', '\d.*?')\
-                                        .replace('(\D+?)', '(.+?)')\
-                                        .replace('[\d，]+(?:[\./]\d+)?\D+?)', '\d.*?')\
-                                        .replace('[A-Za-z]+\d+(?:[\./]\d+)?', '.+?')
-
-            extracted_element,extracted_elem_idx = self.extract_element_and_span(tmp_gen_regex)
-            if extracted_element == element and extracted_elem_idx == elem_idx_on_attrValue:
-                new_gen_regex = tmp_gen_regex
+            replace_regex_list=[
+                ('[\d，]+(?:[\./]\d+)?', '\d.*?'),
+                ('[\d，]+(?:[\./]\d+)?\D+?', '\d.*?'),
+                ('[A-Za-z]+\d+(?:[\./]\d+)?', '.+?'),
+                ('(\D+?)', '(.+?)'),
+                ("\d.*?",".+?")
+            ]
+            for rep in replace_regex_list:
+                tmp_gen_regex = gen_regex.replace(rep[0],rep[1])
+                if self.is_correct_generated_regex(tmp_gen_regex, element, elem_idx_on_token):
+                    new_gen_regex = tmp_gen_regex if len(tmp_gen_regex) < len(new_gen_regex) else new_gen_regex
             return new_gen_regex
 
+        def regex_lookahead_for_matching_element_value(gen_regex):
         # キャプチャする正規表現から１つずつ前に遡り、element_valueと同じものがとれる正規表現はあるか走査する。
 
-        elem_idx_on_attrValue = self.element_index_token2attrValue[elem_idx_on_token]
-        new_gen_regex =  self.concat_ever_token_regex(elem_idx_on_token, gen_regex)
-        gen_regex_idx = new_gen_regex.find(gen_regex)
-        for i in reversed(range(0, gen_regex_idx)):
-            tmp_gen_regex = new_gen_regex[i:]
-           
-            try:
-                extracted_element,extracted_elem_idx = self.extract_element_and_span(tmp_gen_regex)
-    
-                if extracted_element == element and extracted_elem_idx == elem_idx_on_attrValue:
-                    new_gen_regex = tmp_gen_regex
-                    break
-            except:
-                continue
+            elem_idx_on_attrValue = self.element_index_token2attrValue[elem_idx_on_token]
+            new_gen_regex =  self.concat_ever_token_regex(elem_idx_on_token, gen_regex)
+            gen_regex_idx = new_gen_regex.find(gen_regex)
+            for i in reversed(range(0, gen_regex_idx+1)):
+                tmp_gen_regex = new_gen_regex[i:]
+            
+                try:
+                    if self.is_correct_generated_regex(tmp_gen_regex, element, elem_idx_on_token):
+                        new_gen_regex = tmp_gen_regex
+                        break
+                except:
+                    continue
+            return new_gen_regex
 
+
+        new_gen_regex = regex_lookahead_for_matching_element_value(gen_regex)
         new_gen_regex = capture_replace(new_gen_regex)
         new_gen_regex = re.sub('(\.\+\?){2,}','.+?',new_gen_regex)
         return new_gen_regex
     
-
-def excute(S,querys,pattern):
-    obj = element_RegexGenerator(S,querys,pattern)
-    obj.excute()
-   # extracted_element_values =  obj.extracted_element_values
-    extracted_element_values = obj.get_extracted_element_values()
-
-    print(extracted_element_values)
-    return extracted_element_values
-
-def testcase_complex3():
-    S = '品番:XXX-ABCD-1-XYZ-5-123\n寸法:L1000×W300×H500mm\n重量:10kg\nカラー:ブラック\n(特記事項:強度に優れる)'
-    querys = ['1000', '300', '500', '10', 'ブラック', '強度に優れる']
-    pattern = '品番:[A-Z]{3}-[A-Z]{4}-\d-[A-Z]{3}-\d-\d{3}\n寸法:L\d{4}×W\d{3}×H\d{3}mm\n重量:\d{2}kg\nカラー:[\p{Hiragana}\p{Katakana}ー]+\n\(特記事項:[\p{Hiragana}\p{Katakana}ー]+\)'
-
-    assert querys == excute(S,querys,pattern)
-
-testcase_complex3()
